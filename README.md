@@ -15,7 +15,7 @@ Inspired by [dmaevsky/rd-parse](https://github.com/dmaevsky/rd-parse).
 - All (  `,` )
 - Any ( `|` )
 - Optional ( `?` )
-- Repeat ( `*` )
+- Repetition ( `*` )
 - AtleastOnce ( `+` )
 
 ### Modifiers

@@ -167,12 +167,14 @@ export function Action(action) {
 
 ////////////////////////////////////////////////////////////////
 
-export function Y(rule) {
-    return function(f) {
-        return f(f);
-    }(function(f) {
-        return rule(function(x) {
-            return (f(f))(x);
+export function Y(proc) {
+    return function(x) {
+        return proc(function(y) {
+            return (x(x))(y);
+        });
+    }(function(x) {
+        return proc(function(y) {
+            return (x(x))(y);
         });
     });
 };
