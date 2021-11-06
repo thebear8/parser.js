@@ -28,7 +28,7 @@ export function String(rule) {
     };
 };
 
-export function Concatenation(...rules) {
+export function All(...rules) {
     rules = rules.map(Rule);
     return function(ctx) {
         ctx = Context(ctx);
@@ -48,7 +48,7 @@ export function Concatenation(...rules) {
     };
 };
 
-export function Alternation(...rules) {
+export function Any(...rules) {
     rules = rules.map(Rule);
     return function(ctx) {
         ctx = Context(ctx);
