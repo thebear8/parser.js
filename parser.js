@@ -3,7 +3,7 @@ export function Regex(rule) {
     rule = rule.startsWith("^") ? rule : "^" + rule;
     let regex = new RegExp(rule);
     return function(ctx) {
-        ctx = Input(ctx);
+        ctx = Context(ctx);
         ctx.skipIgnored();
         let match = regex.exec(ctx.input.substr(ctx.position));
         if(match) {
@@ -17,7 +17,7 @@ export function Regex(rule) {
 
 export function String(rule) {
     return function(ctx) {
-        ctx = Input(ctx);
+        ctx = Context(ctx);
         ctx.skipIgnored();
         if(ctx.input.startsWith(rule, ctx.position)) {
             ctx.advance(rule.length);
@@ -31,7 +31,7 @@ export function String(rule) {
 export function Concatenation(...rules) {
     rules = rules.map(Rule);
     return function(ctx) {
-        ctx = Input(ctx);
+        ctx = Context(ctx);
         ctx.save();
         let values = [];
         for(let rule of rules) {
@@ -51,7 +51,7 @@ export function Concatenation(...rules) {
 export function Alternation(...rules) {
     rules = rules.map(Rule);
     return function(ctx) {
-        ctx = Input(ctx);
+        ctx = Context(ctx);
         for(let rule of rules) {
             ctx.save();
             let value = rule(ctx);
@@ -70,7 +70,7 @@ export function Optional(...rules) {
     rules = rules.map(Rule);
     let rule = Concatenation(...rules);
     return function(ctx) {
-        ctx = Input(ctx);
+        ctx = Context(ctx);
         ctx.save();
         let value = rule(ctx);
         if(value) {
@@ -87,7 +87,7 @@ export function Repetition(...rules) {
     rules = rules.map(Rule);
     let rule = Concatenation(...rules);
     return function(ctx) {
-        ctx = Input(ctx);
+        ctx = Context(ctx);
         ctx.save();
         let values = [];
         while(true) {
@@ -106,7 +106,7 @@ export function AtleastOnce(...rules) {
     rules = rules.map(Rule);
     let rule = Concatenation(...rules);
     return function(ctx) {
-        ctx = Input(ctx);
+        ctx = Context(ctx);
         ctx.save();
         let values = undefined;
         while(true) {
@@ -126,7 +126,7 @@ export function Reduce(reduce, ...rules) {
     rules = rules.map(Rule);
     let rule = Concatenation(...rules);
     return function(ctx) {
-        ctx = Input(ctx);
+        ctx = Context(ctx);
         let value = rule(ctx);
         if(value) {
             return reduce(value);
@@ -141,13 +141,29 @@ export function Ignore(ignore, ...rules) {
     rules = rules.map(Rule);
     let rule = Concatenation(...rules);
     return function(ctx) {
-        ctx = Input(ctx);
+        ctx = Context(ctx);
         ctx.ignoredStack.push(ignore);
         let value = rule(ctx);
         ctx.ignoredStack.pop();
         return value;
     };
 };
+
+export function Action(action) {
+    return function(ctx) {
+        ctx = Context(ctx);
+        ctx.save();
+        ctx.skipIgnored();
+        let result = action(ctx);
+        if(result) {
+            ctx.discard();
+            return result;
+        } else {
+            ctx.restore();
+            return undefined;
+        }
+    };
+}
 
 ////////////////////////////////////////////////////////////////
 
@@ -167,12 +183,10 @@ export function Rule(rule) {
     if(rule instanceof RegExp) return new Regex(rule);
 };
 
-export function Input(input) {
-    if(typeof(input) == "string") return new Context(input);
-    else return input;
-}
+export function Context(input) {
+    if(input.constructor == Input) return input;
+    if(!this) return new Context(input);
 
-export function Context(input, position = 0) {
     this.input = input;
     this.position = position;
     this.positionStack = [];
