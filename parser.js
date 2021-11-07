@@ -2,11 +2,11 @@ export function Regex(rule) {
     rule = rule.source ?? rule;
     rule = rule.startsWith("^") ? rule : "^" + rule;
     let regex = new RegExp(rule);
-    return function(ctx) {
+    return function (ctx) {
         ctx = Context(ctx);
         ctx.skipIgnored();
         let match = regex.exec(ctx.input.substr(ctx.position));
-        if(match) {
+        if (match) {
             ctx.advance(match[0].length);
             return match.slice(1);
         } else {
@@ -16,10 +16,10 @@ export function Regex(rule) {
 };
 
 export function String(rule) {
-    return function(ctx) {
+    return function (ctx) {
         ctx = Context(ctx);
         ctx.skipIgnored();
-        if(ctx.input.startsWith(rule, ctx.position)) {
+        if (ctx.input.startsWith(rule, ctx.position)) {
             ctx.advance(rule.length);
             return [];
         } else {
@@ -30,13 +30,13 @@ export function String(rule) {
 
 export function All(...rules) {
     rules = rules.map(Rule);
-    return function(ctx) {
+    return function (ctx) {
         ctx = Context(ctx);
         ctx.save();
         let values = [];
-        for(let rule of rules) {
+        for (let rule of rules) {
             let value = rule(ctx);
-            if(!value) {
+            if (!value) {
                 ctx.restore();
                 return undefined;
             } else {
@@ -50,12 +50,12 @@ export function All(...rules) {
 
 export function Any(...rules) {
     rules = rules.map(Rule);
-    return function(ctx) {
+    return function (ctx) {
         ctx = Context(ctx);
-        for(let rule of rules) {
+        for (let rule of rules) {
             ctx.save();
             let value = rule(ctx);
-            if(value) {
+            if (value) {
                 ctx.discard();
                 return value;
             } else {
@@ -68,12 +68,12 @@ export function Any(...rules) {
 
 export function Optional(...rules) {
     rules = rules.map(Rule);
-    let rule = Concatenation(...rules);
-    return function(ctx) {
+    let rule = All(...rules);
+    return function (ctx) {
         ctx = Context(ctx);
         ctx.save();
         let value = rule(ctx);
-        if(value) {
+        if (value) {
             ctx.discard();
             return value;
         } else {
@@ -85,14 +85,14 @@ export function Optional(...rules) {
 
 export function Repetition(...rules) {
     rules = rules.map(Rule);
-    let rule = Concatenation(...rules);
-    return function(ctx) {
+    let rule = All(...rules);
+    return function (ctx) {
         ctx = Context(ctx);
         ctx.save();
         let values = [];
-        while(true) {
+        while (true) {
             let value = rule(ctx);
-            if(value) {
+            if (value) {
                 values.push(...value);
             } else {
                 ctx.discard();
@@ -104,14 +104,14 @@ export function Repetition(...rules) {
 
 export function AtleastOnce(...rules) {
     rules = rules.map(Rule);
-    let rule = Concatenation(...rules);
-    return function(ctx) {
+    let rule = All(...rules);
+    return function (ctx) {
         ctx = Context(ctx);
         ctx.save();
         let values = undefined;
-        while(true) {
+        while (true) {
             let value = rule(ctx);
-            if(value) {
+            if (value) {
                 values ??= [];
                 values.push(...value);
             } else {
@@ -124,11 +124,11 @@ export function AtleastOnce(...rules) {
 
 export function Reduce(reduce, ...rules) {
     rules = rules.map(Rule);
-    let rule = Concatenation(...rules);
-    return function(ctx) {
+    let rule = All(...rules);
+    return function (ctx) {
         ctx = Context(ctx);
         let value = rule(ctx);
-        if(value) {
+        if (value) {
             return reduce(value);
         } else {
             return undefined;
@@ -139,8 +139,8 @@ export function Reduce(reduce, ...rules) {
 export function Ignore(ignore, ...rules) {
     ignore = Rule(ignore);
     rules = rules.map(Rule);
-    let rule = Concatenation(...rules);
-    return function(ctx) {
+    let rule = All(...rules);
+    return function (ctx) {
         ctx = Context(ctx);
         ctx.ignoredStack.push(ignore);
         let value = rule(ctx);
@@ -150,12 +150,12 @@ export function Ignore(ignore, ...rules) {
 };
 
 export function Action(action) {
-    return function(ctx) {
+    return function (ctx) {
         ctx = Context(ctx);
         ctx.save();
         ctx.skipIgnored();
         let result = action(ctx);
-        if(result) {
+        if (result) {
             ctx.discard();
             return result;
         } else {
@@ -180,17 +180,17 @@ export function Y(proc) {
 };
 
 export function Rule(rule) {
-    if(typeof(rule) == "function") return rule;
-    if(typeof(rule) == "string") return new String(rule);
-    if(rule instanceof RegExp) return new Regex(rule);
+    if (typeof (rule) == "function") return rule;
+    if (typeof (rule) == "string") return new String(rule);
+    if (rule instanceof RegExp) return new Regex(rule);
 };
 
 export function Context(input) {
-    if(input.constructor == Input) return input;
-    if(!this) return new Context(input);
+    if (input.constructor == Context) return input;
+    if (!this) return new Context(input);
 
     this.input = input;
-    this.position = position;
+    this.position = 0;
     this.positionStack = [];
     this.ignoredStack = [];
 
@@ -205,7 +205,7 @@ export function Context(input) {
         this.skipIgnored = () => { };
 
         this.ignoredStack.forEach((rule) => {
-            if(rule(this)) {
+            if (rule(this)) {
                 this.skipIgnored = skipIgnored;
                 return this.skipIgnored();
             }
