@@ -8,7 +8,7 @@ export function Regex(value) {
     let regex = new RegExp(value);
     return wrapRule((ctx) => {
         let match = regex.exec(ctx.input.substr(ctx.position));
-        if(match) {
+        if (match) {
             ctx.advance(match[0].length);
             return match.slice(1);
         } else {
@@ -19,7 +19,7 @@ export function Regex(value) {
 
 export function String(value) {
     return wrapRule((ctx) => {
-        if(ctx.input.startsWith(value, ctx.position)) {
+        if (ctx.input.startsWith(value, ctx.position)) {
             ctx.advance(value.length);
             return [];
         } else {
@@ -30,7 +30,7 @@ export function String(value) {
 
 export function EOF() {
     return wrapRule((ctx) => {
-        if(ctx.position == ctx.input.length) {
+        if (ctx.position == ctx.input.length) {
             return [];
         } else {
             return undefined;
@@ -46,9 +46,9 @@ export function All(...rules) {
     rules = rules.map(makeRule);
     return wrapRule((ctx) => {
         let values = [];
-        for(let rule of rules) {
+        for (let rule of rules) {
             let value = rule(ctx);
-            if(value) {
+            if (value) {
                 values.push(...value);
             } else {
                 return undefined;
@@ -61,10 +61,10 @@ export function All(...rules) {
 export function Any(...rules) {
     rules = rules.map(makeRule);
     return wrapRule((ctx) => {
-        for(let rule of rules) {
+        for (let rule of rules) {
             ctx.save();
             let value = rule(ctx);
-            if(value) {
+            if (value) {
                 ctx.discard();
                 return value;
             } else {
@@ -79,7 +79,7 @@ export function Optional(...rules) {
     let rule = All(...rules.map(makeRule));
     return wrapRule((ctx) => {
         let value = rule(ctx);
-        if(value) {
+        if (value) {
             return value;
         } else {
             return [];
@@ -91,9 +91,9 @@ export function Repetition(...rules) {
     let rule = All(...rules.map(makeRule));
     return wrapRule((ctx) => {
         let values = [];
-        while(true) {
+        while (true) {
             let value = rule(ctx);
-            if(value) {
+            if (value) {
                 values.push(...value);
             } else {
                 return values;
@@ -106,9 +106,9 @@ export function AtleastOnce(...rules) {
     let rule = All(...rules.map(makeRule));
     return wrapRule((ctx) => {
         let values = undefined;
-        while(true) {
+        while (true) {
             let value = rule(ctx);
-            if(value) {
+            if (value) {
                 values ??= [];
                 values.push(...value);
             } else {
@@ -126,12 +126,11 @@ export function Reduce(reduce, ...rules) {
     let rule = All(...rules.map(makeRule));
     return wrapRule((ctx) => {
         let value = rule(ctx);
-        if(value) {
+        if (value) {
             let reduced = reduce(value);
             reduced.from = value.from;
             reduced.to = value.to;
-            reduced.whitespaceBefore = value.whitespaceBefore;
-            if(!Array.isArray(reduced)) {
+            if (!Array.isArray(reduced)) {
                 return [reduced];
             } else {
                 return reduced;
@@ -163,12 +162,12 @@ export function Action(action) {
 ////////////////////////////////////////////////////////////////
 
 export function Y(proc) {
-    return function(x) {
-        return proc(function(y) {
+    return function (x) {
+        return proc(function (y) {
             return (x(x))(y);
         });
-    }(function(x) {
-        return proc(function(y) {
+    }(function (x) {
+        return proc(function (y) {
             return (x(x))(y);
         });
     });
@@ -190,19 +189,17 @@ function makeContext(input) {
 };
 
 function wrapRule(rule) {
-    return function(input) {
+    return function (input) {
         let ctx = makeContext(input);
         ctx.save();
-        let ws = ctx.position;
         ctx.skipWhitespace();
         let from = ctx.position;
         let value = rule(ctx);
         let to = ctx.position;
-        if(value) {
+        if (value) {
             ctx.discard();
             value.from = from;
             value.to = to;
-            value.whitespaceBefore = ctx.input.substr(ws, (from - ws));
             return value;
         } else {
             ctx.restore();
@@ -226,7 +223,7 @@ function Context(input) {
     this.skipWhitespace = () => {
         let whitespace = this.whitespace;
         this.whitespace = (() => undefined);
-        while(whitespace(this)) {};
+        while (whitespace(this)) { };
         this.whitespace = whitespace;
     };
 };
