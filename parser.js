@@ -120,7 +120,11 @@ export function Reduce(reduce, ...rules) {
             let reduced = reduce(value);
             reduced.from = value.from;
             reduced.to = value.to;
-            return reduced;
+            if(!Array.isArray(reduced)) {
+                return [reduced];
+            } else {
+                return reduced;
+            }
         } else {
             return undefined;
         }
