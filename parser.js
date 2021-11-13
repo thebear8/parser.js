@@ -28,6 +28,16 @@ export function String(value) {
     });
 };
 
+export function EOF() {
+    return wrapRule((ctx) => {
+        if(ctx.position == ctx.input.length) {
+            return [];
+        } else {
+            return undefined;
+        }
+    });
+};
+
 ////////////////////////////////////////////////////////////////
 // OPERATORS
 ////////////////////////////////////////////////////////////////
@@ -182,6 +192,7 @@ function wrapRule(rule) {
     return function(input) {
         let ctx = makeContext(input);
         ctx.save();
+        let ws = ctx.position;
         ctx.skipWhitespace();
         let from = ctx.position;
         let value = rule(ctx);
@@ -190,6 +201,7 @@ function wrapRule(rule) {
             ctx.discard();
             value.from = from;
             value.to = to;
+            value.whitespaceBefore = ctx.input.substr(ws, (from - ws));
             return value;
         } else {
             ctx.restore();
