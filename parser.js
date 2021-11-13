@@ -130,6 +130,7 @@ export function Reduce(reduce, ...rules) {
             let reduced = reduce(value);
             reduced.from = value.from;
             reduced.to = value.to;
+            reduced.whitespaceBefore = value.whitespaceBefore;
             if(!Array.isArray(reduced)) {
                 return [reduced];
             } else {
