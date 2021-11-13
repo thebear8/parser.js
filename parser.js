@@ -1,61 +1,60 @@
-export function Regex(rule) {
-    rule = rule.source ?? rule;
-    rule = rule.startsWith("^") ? rule : "^" + rule;
-    let regex = new RegExp(rule);
-    return function (ctx) {
-        ctx = Context(ctx);
-        ctx.skipIgnored();
+////////////////////////////////////////////////////////////////
+// ATOMIC TOKENS
+////////////////////////////////////////////////////////////////
+
+export function Regex(value) {
+    value = value.source ?? value;
+    value = value.startsWith("^") ? value : "^" + value;
+    let regex = new RegExp(value);
+    return wrapRule((ctx) => {
         let match = regex.exec(ctx.input.substr(ctx.position));
-        if (match) {
+        if(match) {
             ctx.advance(match[0].length);
             return match.slice(1);
         } else {
             return undefined;
         }
-    };
+    });
 };
 
-export function String(rule) {
-    return function (ctx) {
-        ctx = Context(ctx);
-        ctx.skipIgnored();
-        if (ctx.input.startsWith(rule, ctx.position)) {
-            ctx.advance(rule.length);
+export function String(value) {
+    return wrapRule((ctx) => {
+        if(ctx.input.startsWith(value, ctx.position)) {
+            ctx.advance(value.length);
             return [];
         } else {
             return undefined;
         }
-    };
+    });
 };
 
+////////////////////////////////////////////////////////////////
+// OPERATORS
+////////////////////////////////////////////////////////////////
+
 export function All(...rules) {
-    rules = rules.map(Rule);
-    return function (ctx) {
-        ctx = Context(ctx);
-        ctx.save();
+    rules = rules.map(makeRule);
+    return wrapRule((ctx) => {
         let values = [];
-        for (let rule of rules) {
+        for(let rule of rules) {
             let value = rule(ctx);
-            if (!value) {
-                ctx.restore();
-                return undefined;
-            } else {
+            if(value) {
                 values.push(...value);
+            } else {
+                return undefined;
             }
         }
-        ctx.discard();
         return values;
-    };
+    });
 };
 
 export function Any(...rules) {
-    rules = rules.map(Rule);
-    return function (ctx) {
-        ctx = Context(ctx);
-        for (let rule of rules) {
+    rules = rules.map(makeRule);
+    return wrapRule((ctx) => {
+        for(let rule of rules) {
             ctx.save();
             let value = rule(ctx);
-            if (value) {
+            if(value) {
                 ctx.discard();
                 return value;
             } else {
@@ -63,108 +62,89 @@ export function Any(...rules) {
             }
         }
         return undefined;
-    };
+    });
 };
 
 export function Optional(...rules) {
-    rules = rules.map(Rule);
-    let rule = All(...rules);
-    return function (ctx) {
-        ctx = Context(ctx);
-        ctx.save();
+    let rule = All(...rules.map(makeRule));
+    return wrapRule((ctx) => {
         let value = rule(ctx);
-        if (value) {
-            ctx.discard();
+        if(value) {
             return value;
         } else {
-            ctx.restore();
             return [];
         }
-    };
+    });
 };
 
 export function Repetition(...rules) {
-    rules = rules.map(Rule);
-    let rule = All(...rules);
-    return function (ctx) {
-        ctx = Context(ctx);
-        ctx.save();
+    let rule = All(...rules.map(makeRule));
+    return wrapRule((ctx) => {
         let values = [];
-        while (true) {
+        while(true) {
             let value = rule(ctx);
-            if (value) {
+            if(value) {
                 values.push(...value);
             } else {
-                ctx.discard();
                 return values;
             }
         }
-    };
+    });
 };
 
 export function AtleastOnce(...rules) {
-    rules = rules.map(Rule);
-    let rule = All(...rules);
-    return function (ctx) {
-        ctx = Context(ctx);
-        ctx.save();
+    let rule = All(...rules.map(makeRule));
+    return wrapRule((ctx) => {
         let values = undefined;
-        while (true) {
+        while(true) {
             let value = rule(ctx);
-            if (value) {
+            if(value) {
                 values ??= [];
                 values.push(...value);
             } else {
-                ctx.discard();
                 return values;
             }
         }
-    };
+    });
 };
 
+////////////////////////////////////////////////////////////////
+// MODIFIERS
+////////////////////////////////////////////////////////////////
+
 export function Reduce(reduce, ...rules) {
-    rules = rules.map(Rule);
-    let rule = All(...rules);
-    return function (ctx) {
-        ctx = Context(ctx);
+    let rule = All(...rules.map(makeRule));
+    return wrapRule((ctx) => {
         let value = rule(ctx);
-        if (value) {
-            return reduce(value);
+        if(value) {
+            let reduced = reduce(value);
+            reduced.from = value.from;
+            reduced.to = value.to;
+            return reduced;
         } else {
             return undefined;
         }
-    };
+    });
 };
 
-export function Ignore(ignore, ...rules) {
-    ignore = Rule(ignore);
-    rules = rules.map(Rule);
-    let rule = All(...rules);
-    return function (ctx) {
-        ctx = Context(ctx);
-        ctx.ignoredStack.push(ignore);
+export function Whitespace(whitespace, ...rules) {
+    whitespace = makeRule(whitespace);
+    let rule = All(...rules.map(makeRule));
+    return wrapRule((ctx) => {
+        let prevWhitespace = ctx.whitespace;
+        ctx.whitespace = whitespace;
         let value = rule(ctx);
-        ctx.ignoredStack.pop();
+        ctx.whitespace = prevWhitespace;
         return value;
-    };
+    });
 };
 
 export function Action(action) {
-    return function (ctx) {
-        ctx = Context(ctx);
-        ctx.save();
-        ctx.skipIgnored();
-        let result = action(ctx);
-        if (result) {
-            ctx.discard();
-            return result;
-        } else {
-            ctx.restore();
-            return undefined;
-        }
-    };
-}
+    return wrapRule(action);
+};
 
+////////////////////////////////////////////////////////////////
+// Y COMBINATOR
 ////////////////////////////////////////////////////////////////
 
 export function Y(proc) {
@@ -179,20 +159,46 @@ export function Y(proc) {
     });
 };
 
-export function Rule(rule) {
+////////////////////////////////////////////////////////////////
+// HELPERS
+////////////////////////////////////////////////////////////////
+
+function makeRule(rule) {
     if (typeof (rule) == "function") return rule;
     if (typeof (rule) == "string") return new String(rule);
     if (rule instanceof RegExp) return new Regex(rule);
 };
 
-export function Context(input) {
+function makeContext(input) {
     if (input.constructor == Context) return input;
-    if (!this) return new Context(input);
+    else return new Context(input);
+};
 
+function wrapRule(rule) {
+    return function(input) {
+        let ctx = makeContext(input);
+        ctx.save();
+        ctx.skipWhitespace();
+        let from = ctx.position;
+        let value = rule(ctx);
+        let to = ctx.position;
+        if(value) {
+            ctx.discard();
+            value.from = from;
+            value.to = to;
+            return value;
+        } else {
+            ctx.restore();
+            return undefined;
+        }
+    };
+};
+
+function Context(input) {
     this.input = input;
     this.position = 0;
     this.positionStack = [];
-    this.ignoredStack = [];
+    this.whitespace = (() => undefined);
 
     this.advance = (count) => this.position += count;
 
@@ -200,18 +206,10 @@ export function Context(input) {
     this.discard = () => this.positionStack.pop();
     this.restore = () => this.position = this.positionStack.pop();
 
-    this.skipIgnored = () => {
-        let skipIgnored = this.skipIgnored;
-        this.skipIgnored = () => { };
-
-        this.ignoredStack.forEach((rule) => {
-            if (rule(this)) {
-                this.skipIgnored = skipIgnored;
-                return this.skipIgnored();
-            }
-        });
-
-        this.skipIgnored = skipIgnored;
-        return undefined;
+    this.skipWhitespace = () => {
+        let whitespace = this.whitespace;
+        this.whitespace = (() => undefined);
+        while(whitespace(this)) {};
+        this.whitespace = whitespace;
     };
 };
