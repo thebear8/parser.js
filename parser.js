@@ -127,7 +127,7 @@ export function Reduce(reduce, ...rules) {
     return wrapRule((ctx) => {
         let value = rule(ctx);
         if (value) {
-            let reduced = reduce(value);
+            let reduced = reduce(...value);
             reduced.from = value.from;
             reduced.to = value.to;
             if (!Array.isArray(reduced)) {
@@ -135,6 +135,21 @@ export function Reduce(reduce, ...rules) {
             } else {
                 return reduced;
             }
+        } else {
+            return undefined;
+        }
+    });
+};
+
+export function AstNode(constructor, ...rules) {
+    let rule = All(...rules.map(makeRule));
+    return wrapRule((ctx) => {
+        let value = rule(ctx);
+        if(value) {
+            let node = new constructor(...value);
+            node.from = value.from;
+            node.to = value.to;
+            return [node];
         } else {
             return undefined;
         }
@@ -151,10 +166,6 @@ export function Whitespace(whitespace, ...rules) {
         ctx.whitespace = prevWhitespace;
         return value;
     });
-};
-
-export function Action(action) {
-    return wrapRule(action);
 };
 
 ////////////////////////////////////////////////////////////////
