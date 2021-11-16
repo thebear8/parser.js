@@ -62,13 +62,9 @@ export function Any(...rules) {
     rules = rules.map(makeRule);
     return wrapRule((ctx) => {
         for (let rule of rules) {
-            ctx.save();
             let value = rule(ctx);
             if (value) {
-                ctx.discard();
                 return value;
-            } else {
-                ctx.restore();
             }
         }
         return undefined;
