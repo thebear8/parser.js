@@ -118,6 +118,18 @@ export function AtleastOnce(...rules) {
 // MODIFIERS
 ////////////////////////////////////////////////////////////////
 
+export function Group(...rules) {
+    let rule = All(...rules.map(makeRule));
+    return wrapRule((ctx) => {
+        let value = rule(ctx);
+        if(value) {
+            return [value];
+        } else {
+            return undefined;
+        }
+    });
+};
+
 export function Reduce(reduce, ...rules) {
     let rule = All(...rules.map(makeRule));
     return wrapRule((ctx) => {
