@@ -2,6 +2,17 @@
 // ATOMIC TOKENS
 ////////////////////////////////////////////////////////////////
 
+export function String(value) {
+    return wrapRule((ctx) => {
+        if (ctx.input.startsWith(value, ctx.position)) {
+            ctx.advance(value.length);
+            return [];
+        } else {
+            return undefined;
+        }
+    });
+};
+
 export function Regex(value) {
     value = value.source ?? value;
     value = value.startsWith("^") ? value : "^" + value;
@@ -11,17 +22,6 @@ export function Regex(value) {
         if (match) {
             ctx.advance(match[0].length);
             return match.slice(1);
-        } else {
-            return undefined;
-        }
-    });
-};
-
-export function String(value) {
-    return wrapRule((ctx) => {
-        if (ctx.input.startsWith(value, ctx.position)) {
-            ctx.advance(value.length);
-            return [];
         } else {
             return undefined;
         }
@@ -42,11 +42,11 @@ export function EOF() {
 // OPERATORS
 ////////////////////////////////////////////////////////////////
 
-export function All(...rules) {
-    rules = rules.map(makeRule);
+export function All(...fragments) {
+    fragments = fragments.map(makeRule);
     return wrapRule((ctx) => {
         let values = [];
-        for (let rule of rules) {
+        for (let rule of fragments) {
             let value = rule(ctx);
             if (value) {
                 values.push(...value);
@@ -58,10 +58,10 @@ export function All(...rules) {
     });
 };
 
-export function Any(...rules) {
-    rules = rules.map(makeRule);
+export function Any(...fragments) {
+    fragments = fragments.map(makeRule);
     return wrapRule((ctx) => {
-        for (let rule of rules) {
+        for (let rule of fragments) {
             let value = rule(ctx);
             if (value) {
                 return value;
@@ -71,8 +71,8 @@ export function Any(...rules) {
     });
 };
 
-export function Optional(...rules) {
-    let rule = All(...rules.map(makeRule));
+export function Optional(...fragments) {
+    let rule = All(...fragments.map(makeRule));
     return wrapRule((ctx) => {
         let value = rule(ctx);
         if (value) {
@@ -83,8 +83,8 @@ export function Optional(...rules) {
     });
 };
 
-export function Repetition(...rules) {
-    let rule = All(...rules.map(makeRule));
+export function Repetition(...fragments) {
+    let rule = All(...fragments.map(makeRule));
     return wrapRule((ctx) => {
         let values = [];
         while (true) {
@@ -98,8 +98,8 @@ export function Repetition(...rules) {
     });
 };
 
-export function AtleastOnce(...rules) {
-    let rule = All(...rules.map(makeRule));
+export function AtleastOnce(...fragments) {
+    let rule = All(...fragments.map(makeRule));
     return wrapRule((ctx) => {
         let values = undefined;
         while (true) {
@@ -118,8 +118,8 @@ export function AtleastOnce(...rules) {
 // MODIFIERS
 ////////////////////////////////////////////////////////////////
 
-export function Group(...rules) {
-    let rule = All(...rules.map(makeRule));
+export function Group(...fragments) {
+    let rule = All(...fragments.map(makeRule));
     return wrapRule((ctx) => {
         let value = rule(ctx);
         if(value) {
@@ -130,8 +130,8 @@ export function Group(...rules) {
     });
 };
 
-export function Reduce(reduce, ...rules) {
-    let rule = All(...rules.map(makeRule));
+export function Reduce(reduce, ...fragments) {
+    let rule = All(...fragments.map(makeRule));
     return wrapRule((ctx) => {
         let value = rule(ctx);
         if (value) {
@@ -149,8 +149,8 @@ export function Reduce(reduce, ...rules) {
     });
 };
 
-export function AstNode(constructor, ...rules) {
-    let rule = All(...rules.map(makeRule));
+export function AstNode(constructor, ...fragments) {
+    let rule = All(...fragments.map(makeRule));
     return wrapRule((ctx) => {
         let value = rule(ctx);
         if(value) {
@@ -164,9 +164,9 @@ export function AstNode(constructor, ...rules) {
     });
 };
 
-export function Whitespace(whitespace, ...rules) {
+export function Whitespace(whitespace, ...fragments) {
     whitespace = makeRule(whitespace);
-    let rule = All(...rules.map(makeRule));
+    let rule = All(...fragments.map(makeRule));
     return wrapRule((ctx) => {
         let prevWhitespace = ctx.whitespace;
         ctx.whitespace = whitespace;
