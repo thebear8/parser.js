@@ -13,9 +13,17 @@ Inspired by [dmaevsky/rd-parse](https://github.com/dmaevsky/rd-parse).
 - If no match was found or the match failed `undefined` is returned
 
 ## Basic Tokens
-### String
+### CapturingString
 ```javascript
-String(value)
+CapturingString(value)
+```
+- Matches a given string at the current position
+- Captures the matched string
+- Returns an the matched string in an array or `undefined` on failure
+
+### NonCapturingString
+```javascript
+NonCapturingString(value)
 ```
 - Matches a given string at the current position
 - Does not capture anything

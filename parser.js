@@ -1,8 +1,19 @@
 ////////////////////////////////////////////////////////////////
-// ATOMIC TOKENS
+// BASIC TOKENS
 ////////////////////////////////////////////////////////////////
 
-export function String(value) {
+export function CapturingString(value) {
+    return wrapRule((ctx) => {
+        if (ctx.input.startsWith(value, ctx.position)) {
+            ctx.advance(value.length);
+            return [value];
+        } else {
+            return undefined;
+        }
+    });
+};
+
+export function NonCapturingString(value) {
     return wrapRule((ctx) => {
         if (ctx.input.startsWith(value, ctx.position)) {
             ctx.advance(value.length);
@@ -30,7 +41,7 @@ export function Regex(value) {
 
 export function EOF() {
     return wrapRule((ctx) => {
-        if (ctx.position == ctx.input.length) {
+        if (ctx.position === ctx.input.length) {
             return [];
         } else {
             return undefined;
@@ -105,7 +116,7 @@ export function AtleastOnce(...fragments) {
         while (true) {
             let value = rule(ctx);
             if (value) {
-                values ??= [];
+                values = values ? values : [];
                 values.push(...value);
             } else {
                 return values;
@@ -198,12 +209,12 @@ export function Y(proc) {
 
 function makeRule(rule) {
     if (typeof (rule) == "function") return rule;
-    if (typeof (rule) == "string") return new String(rule);
-    if (rule instanceof RegExp) return new Regex(rule);
+    if (typeof (rule) == "string") return NonCapturingString(rule);
+    if (rule instanceof RegExp) return Regex(rule);
 };
 
 function makeContext(input) {
-    if (input.constructor == Context) return input;
+    if (input.constructor === Context) return input;
     else return new Context(input);
 };
 
