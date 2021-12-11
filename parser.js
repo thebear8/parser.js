@@ -133,7 +133,7 @@ export function Group(...fragments) {
     let rule = All(...fragments.map(makeRule));
     return wrapRule((ctx) => {
         let value = rule(ctx);
-        if(value) {
+        if (value) {
             return [value];
         } else {
             return undefined;
@@ -147,8 +147,10 @@ export function Reduce(reduce, ...fragments) {
         let value = rule(ctx);
         if (value) {
             let reduced = reduce(...value);
-            reduced.from = value.from;
-            reduced.to = value.to;
+            if (ctx.doSourceMapping && typeof (reduced) == "object") {
+                reduced.from = value.from;
+                reduced.to = value.to;
+            }
             if (!Array.isArray(reduced)) {
                 return [reduced];
             } else {
@@ -164,10 +166,15 @@ export function AstNode(constructor, ...fragments) {
     let rule = All(...fragments.map(makeRule));
     return wrapRule((ctx) => {
         let value = rule(ctx);
-        if(value) {
+        if (value) {
             let node = new constructor(...value);
-            node.from = value.from;
-            node.to = value.to;
+            if (ctx.doSourceMapping && typeof (reduced) == "object") {
+                node.from = value.from;
+                node.to = value.to;
+            }
+            if (ctx.doTypeTagging && typeof (reduced) == "object") {
+                node.type = constructor.name;
+            }
             return [node];
         } else {
             return undefined;
@@ -228,8 +235,10 @@ function wrapRule(rule) {
         let to = ctx.position;
         if (value) {
             ctx.discard();
-            value.from = from;
-            value.to = to;
+            if (ctx.doSourceMapping && typeof (reduced) == "object") {
+                value.from = from;
+                value.to = to;
+            }
             return value;
         } else {
             ctx.restore();
@@ -238,11 +247,13 @@ function wrapRule(rule) {
     };
 };
 
-function Context(input) {
+function Context(input, doSourceMapping = true, doTypeTagging = false) {
     this.input = input;
     this.position = 0;
     this.positionStack = [];
     this.whitespace = (() => undefined);
+    this.doSourceMapping = doSourceMapping;
+    this.doTypeTagging = doTypeTagging;
 
     this.advance = (count) => this.position += count;
 
